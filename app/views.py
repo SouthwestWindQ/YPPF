@@ -31,19 +31,20 @@ from app.models import (
     ReimbursementPhoto
 )
 import app.utils as utils
-from app.forms import UserForm
-from app.utils import (
+from app.global_messages import (
+    wrong, 
+    succeed,
+    message_url,
     append_query,
+)
+from app.utils import (
     url_check, 
     check_cross_site, 
     get_person_or_org, 
     update_org_application, 
-    wrong, 
-    succeed,
-    message_url,
     escape_for_templates,
     record_modify_with_session,
-    record_traceback,
+    update_related_account_in_session,
 )
 from app.activity_utils import (
     create_activity,
@@ -80,6 +81,7 @@ from app.QA_utils import (
     QA_delete,
     QA_ignore,
 )
+from app import log
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -96,8 +98,6 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from app.utils import operation_writer, update_related_account_in_session
-
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
 from app.scheduler_func import start_scheduler
@@ -113,7 +113,7 @@ YQPoint_oname = local_dict["YQPoint_source_oname"]
 EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
 
-@utils.except_captured(source='views[index]', record_user=True)
+@log.except_captured(source='views[index]', record_user=True)
 def index(request):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
@@ -234,7 +234,7 @@ def index(request):
 
 
 @login_required(redirect_field_name="origin")
-@utils.except_captured(source='views[shiftAccount]', record_user=True)
+@log.except_captured(source='views[shiftAccount]', record_user=True)
 def shiftAccount(request):
 
     username = request.session.get("NP")
@@ -263,7 +263,7 @@ def shiftAccount(request):
 wechat_login_coder = MyMD5PasswordHasher("wechat_login")
 
 
-@utils.except_captured(source='views[miniLogin]', record_user=True)
+@log.except_captured(source='views[miniLogin]', record_user=True)
 def miniLogin(request):
     try:
         assert request.method == "POST"
@@ -291,7 +291,7 @@ def miniLogin(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[stuinfo]', record_user=True)
+@log.except_captured(source='views[stuinfo]', record_user=True)
 def stuinfo(request, name=None):
     """
         进入到这里的逻辑:
@@ -543,7 +543,7 @@ def stuinfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[request_login_org]', record_user=True)
+@log.except_captured(source='views[request_login_org]', record_user=True)
 def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
@@ -587,7 +587,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[user_login_org]', record_user=True)
+@log.except_captured(source='views[user_login_org]', record_user=True)
 def user_login_org(request, org):
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -615,7 +615,7 @@ def user_login_org(request, org):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[orginfo]', record_user=True)
+@log.except_captured(source='views[orginfo]', record_user=True)
 def orginfo(request, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
@@ -835,7 +835,7 @@ def orginfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[homepage]', record_user=True)
+@log.except_captured(source='views[homepage]', record_user=True)
 def homepage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
@@ -994,7 +994,7 @@ def homepage(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[account_setting]', record_user=True)
+@log.except_captured(source='views[account_setting]', record_user=True)
 def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -1114,7 +1114,7 @@ def account_setting(request):
         return render(request, "org_account_setting.html", locals())
 
 
-@utils.except_captured(source='views[freshman]', record_user=True)
+@log.except_captured(source='views[freshman]', record_user=True)
 def freshman(request):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
@@ -1220,7 +1220,7 @@ def freshman(request):
 
 
 @login_required(redirect_field_name="origin")
-@utils.except_captured(source='views[user_agreement]', record_user=True)
+@log.except_captured(source='views[user_agreement]', record_user=True)
 def user_agreement(request):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -1240,7 +1240,7 @@ def user_agreement(request):
 
 
 
-@utils.except_captured(source='views[auth_register]', record_user=True)
+@log.except_captured(source='views[auth_register]', record_user=True)
 def auth_register(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
@@ -1291,14 +1291,14 @@ def auth_register(request):
 
 
 # @login_required(redirect_field_name=None)
-@utils.except_captured(source='views[logout]', record_user=True)
+@log.except_captured(source='views[logout]', record_user=True)
 def logout(request):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
 
 """
-@utils.except_captured(source='views[org_spec]', record_user=True)
+@log.except_captured(source='views[org_spec]', record_user=True)
 def org_spec(request, *args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
@@ -1315,7 +1315,7 @@ def org_spec(request, *args, **kwargs):
     return render(request, 'org_spec.html', locals())
 """
 
-@utils.except_captured(source='views[get_stu_img]', record_user=True)
+@log.except_captured(source='views[get_stu_img]', record_user=True)
 def get_stu_img(request):
     print("in get stu img")
     stuId = request.GET.get("stuId")
@@ -1331,7 +1331,7 @@ def get_stu_img(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[search]', record_user=True)
+@log.except_captured(source='views[search]', record_user=True)
 def search(request):
     """
         搜索界面的呈现逻辑
@@ -1452,7 +1452,7 @@ def search(request):
     return render(request, "search.html", locals())
 
 
-@utils.except_captured(source='views[forget_password]', record_user=True)
+@log.except_captured(source='views[forget_password]', record_user=True)
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
@@ -1595,7 +1595,7 @@ def forget_password(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
-@utils.except_captured(source='views[modpw]', record_user=True)
+@log.except_captured(source='views[modpw]', record_user=True)
 def modpw(request):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
@@ -1693,7 +1693,7 @@ def modpw(request):
 # 搜索不希望出现学号，rid 为 User 的 index
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[transaction_page]', record_user=True)
+@log.except_captured(source='views[transaction_page]', record_user=True)
 def transaction_page(request, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
@@ -1816,7 +1816,7 @@ def transaction_page(request, rid=None):
 
 
 
-@utils.except_captured(source='views[confirm_transaction]', record_user=True)
+@log.except_captured(source='views[confirm_transaction]', record_user=True)
 def confirm_transaction(request, tid=None, reject=None):
     context = dict()
     context["warn_code"] = 1  # 先假设有问题
@@ -1903,7 +1903,7 @@ def confirm_transaction(request, tid=None, reject=None):
     return context
 
 
-@utils.except_captured(source='views[record2Display]')
+@log.except_captured(source='views[record2Display]')
 def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_list
     lis = []
     amount = {"send": 0.0, "recv": 0.0}
@@ -1969,7 +1969,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[myYQPoint]', record_user=True)
+@log.except_captured(source='views[myYQPoint]', record_user=True)
 def myYQPoint(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2075,7 +2075,7 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -2109,7 +2109,7 @@ def viewActivity(request, aid=None):
             ]:
             return redirect(message_url(wrong('该活动暂不可见!')))
     except Exception as e:
-        record_traceback(request, e)
+        log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
     html_display = dict()
@@ -2137,7 +2137,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         elif option == "edit":
@@ -2171,7 +2171,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
 
@@ -2195,7 +2195,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         elif option == "payment":
@@ -2347,7 +2347,7 @@ def viewActivity(request, aid=None):
 # TODO: 前端页面待对接
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[getActivityInfo]', record_user=True)
+@log.except_captured(source='views[getActivityInfo]', record_user=True)
 def getActivityInfo(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2454,7 +2454,7 @@ def getActivityInfo(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[checkinActivity]', record_user=True)
+@log.except_captured(source='views[checkinActivity]', record_user=True)
 def checkinActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != "Person":
@@ -2511,7 +2511,7 @@ def checkinActivity(request, aid=None):
 """
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[checkinActivity]', record_user=True)
+@log.except_captured(source='views[checkinActivity]', record_user=True)
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2586,7 +2586,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
@@ -2617,7 +2617,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        record_traceback(request, e)
+        log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
     # 处理 POST 请求
@@ -2634,7 +2634,7 @@ def addActivity(request, aid=None):
                             f'/viewActivity/{aid}'))
                     return redirect(f"/editActivity/{aid}")
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
@@ -2672,7 +2672,7 @@ def addActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
@@ -2714,7 +2714,7 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            record_traceback(request, e)
+            log.record_traceback(request, e)
             return EXCEPT_REDIRECT
 
         # 决定状态的变量
@@ -2775,7 +2775,7 @@ def addActivity(request, aid=None):
     return render(request, "activity_add.html", locals())
 
 @login_required(redirect_field_name="origin")
-@utils.except_captured(source='views[examineActivity]', record_user=True)
+@log.except_captured(source='views[examineActivity]', record_user=True)
 def examineActivity(request, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
@@ -2892,7 +2892,7 @@ def examineActivity(request, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[subscribeOrganization]', record_user=True)
+@log.except_captured(source='views[subscribeOrganization]', record_user=True)
 def subscribeOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
@@ -2923,7 +2923,7 @@ def subscribeOrganization(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[save_show_position_status]', record_user=True)
+@log.except_captured(source='views[save_show_position_status]', record_user=True)
 def save_show_position_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2947,7 +2947,7 @@ def save_show_position_status(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[save_subscribe_status]', record_user=True)
+@log.except_captured(source='views[save_subscribe_status]', record_user=True)
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
@@ -3006,7 +3006,7 @@ def save_subscribe_status(request):
 '''
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[apply_position]', record_user=True)
+@log.except_captured(source='views[apply_position]', record_user=True)
 def apply_position(request, oid=None):
     """ apply for position in organization, including join, withdraw, transfer
     Args:
@@ -3065,7 +3065,7 @@ def apply_position(request, oid=None):
 
 
 
-@utils.except_captured(source='views[notification2Display]')
+@log.except_captured(source='views[notification2Display]')
 def notification2Display(notification_set):
     lis = []
     sender_userids = notification_set.values_list('sender_id', flat=True)
@@ -3110,7 +3110,7 @@ def notification2Display(notification_set):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[notifications]', record_user=True)
+@log.except_captured(source='views[notifications]', record_user=True)
 def notifications(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -3180,7 +3180,7 @@ def notifications(request):
 # 新建评论，
 
 
-@utils.except_captured(source='views[addComment]', record_user=True)
+@log.except_captured(source='views[addComment]', record_user=True)
 def addComment(request, comment_base, receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
@@ -3270,7 +3270,7 @@ def addComment(request, comment_base, receiver=None):
     return context
 
 
-@utils.except_captured(source='views[showComment]')
+@log.except_captured(source='views[showComment]')
 def showComment(commentbase):
     if commentbase is None:
         return None
@@ -3295,7 +3295,7 @@ def showComment(commentbase):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[showNewOrganization]', record_user=True)
+@log.except_captured(source='views[showNewOrganization]', record_user=True)
 def showNewOrganization(request):
     """
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
@@ -3332,7 +3332,7 @@ def showNewOrganization(request):
 # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[modifyPosition]', record_user=True)
+@log.except_captured(source='views[modifyPosition]', record_user=True)
 def modifyPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3538,7 +3538,7 @@ def modifyPosition(request):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[showPosition]', record_user=True)
+@log.except_captured(source='views[showPosition]', record_user=True)
 def showPosition(request):
     '''
     成员的聚合界面
@@ -3566,7 +3566,7 @@ def showPosition(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[endActivity]', record_user=True)
+@log.except_captured(source='views[endActivity]', record_user=True)
 def endActivity(request):
     """
     报销信息的聚合界面
@@ -3610,7 +3610,7 @@ def endActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[showActivity]', record_user=True)
+@log.except_captured(source='views[showActivity]', record_user=True)
 def showActivity(request):
     """
     活动信息的聚合界面
@@ -3660,7 +3660,7 @@ def showActivity(request):
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
-@utils.except_captured(source='views[make_relevant_notification]')
+@log.except_captured(source='views[make_relevant_notification]')
 def make_relevant_notification(application, info):
     # 考虑不同post_type的信息发送行为
     post_type = info.get("post_type")
@@ -3758,7 +3758,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[modifyEndActivity]', record_user=True)
+@log.except_captured(source='views[modifyEndActivity]', record_user=True)
 def modifyEndActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3934,7 +3934,7 @@ def modifyEndActivity(request):
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
 #用于报销的通知
-@utils.except_captured(source='views[make_notification]')
+@log.except_captured(source='views[make_notification]')
 def make_notification(application, request,content,receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
@@ -3982,7 +3982,7 @@ def make_notification(application, request,content,receiver):
 # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[modifyOrganization]', record_user=True)
+@log.except_captured(source='views[modifyOrganization]', record_user=True)
 def modifyOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -4147,7 +4147,7 @@ def modifyOrganization(request):
 # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[sendMessage]', record_user=True)
+@log.except_captured(source='views[sendMessage]', record_user=True)
 def sendMessage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -4196,7 +4196,7 @@ def sendMessage(request):
     return render(request, "sendMessage.html", locals())
 
                 
-@utils.except_captured(source='views[send_message_check]')
+@log.except_captured(source='views[send_message_check]')
 def send_message_check(me, request):
     # 已经检查了我的类型合法，并且确认是post
     # 设置默认量
@@ -4280,7 +4280,7 @@ def send_message_check(me, request):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[QAcenter]', record_user=True)
+@log.except_captured(source='views[QAcenter]', record_user=True)
 def QAcenter(request):
     """
     Haowei:
