@@ -89,7 +89,7 @@ def load_org():
                     msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
-    if YQPoint_oname:
+    if YQP_ONAME:
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)
         if created:
@@ -100,15 +100,15 @@ def load_org():
             org, mid = Organization.objects.get_or_create(
                 organization_id=user, otype=orgtype
             )
-            org.oname = YQPoint_oname
+            org.oname = YQP_ONAME
             org.save()
-            msg += '<br/>成功创建元气值发放组织：'+YQPoint_oname
+            msg += '<br/>成功创建元气值发放组织：'+YQP_ONAME
     return msg
 
 
 
 
-def load_org_info(request):
+def load_org_data(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
@@ -289,7 +289,7 @@ def load_notification_info(request):
     return render(request, "debugging.html", context)
 
 
-def load_stu_info(request):
+def load_stu_data(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)
