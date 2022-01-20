@@ -49,7 +49,11 @@ def load_orgtype(debug=True):
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
-        Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
+        try:
+            Nperson, mid = NaturalPerson.objects.get(name=incharge)
+        except:
+            user, mid = User.objects.get_or_create(username=incharge)
+            Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
         orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold
@@ -62,7 +66,7 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict["organization_id"]
-            password = random_code_init(username)
+            password = 'YPPFtest'#random_code_init(username)
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
