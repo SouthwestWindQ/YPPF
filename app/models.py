@@ -148,7 +148,6 @@ class NaturalPerson(models.Model):
         help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
         )
     
-    promote_accept = models.BooleanField(default=True) #是否接受推广消息
     active_score = models.FloatField("活跃度", default=0)  #用户活跃度
 
     def __str__(self):
@@ -319,7 +318,7 @@ class Organization(models.Model):
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
         
     #组织类型标签，一个组织可能同时有多个标签
-    tag = models.ManyToManyField(OrganizationTag, blank=False)
+    tag = models.ManyToManyField(OrganizationTag, blank=True)
 
     def __str__(self):
         return str(self.oname)
